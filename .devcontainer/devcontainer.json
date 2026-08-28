@@ -1,0 +1,58 @@
+{
+  "name": "k8s-playground (kind)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    }
+  },
+  "runArgs": ["--init"],
+  "forwardPorts": [30000, 30001, 30002],
+  "portsAttributes": {
+    "30000": { "label": "kind NodePort 30000" },
+    "30001": { "label": "kind NodePort 30001" },
+    "30002": { "label": "kind NodePort 30002" }
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "containerEnv": {
+    "KIND_CLUSTER_NAME": "playground",
+    "KUBECONFIG": "/home/vscode/.kube/config"
+  },
+  "onCreateCommand": "bash .devcontainer/install-tools.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "golang.go",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "yaml.schemas": {
+          "kubernetes": ["manifests/**/*.yaml"]
+        }
+      }
+    }
+  }
+}

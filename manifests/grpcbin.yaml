@@ -1,0 +1,64 @@
+# Sample gRPC workload so grpcurl has something to talk to out of the box.
+#
+# moul/grpcbin serves a gRPC test API with server reflection enabled, which is
+# what lets `grpcurl list` / `grpcurl describe` discover services without you
+# supplying .proto files.
+#
+#   plaintext : container port 9000 -> NodePort 30000 -> localhost:30000
+#   TLS       : container port 9001 -> NodePort 30001 -> localhost:30001
+#
+# Try it:
+#   grpcurl -plaintext localhost:30000 list
+#   grpcurl -plaintext localhost:30000 describe grpcbin.GRPCBin
+#   grpcurl -plaintext localhost:30000 grpcbin.GRPCBin/Index
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpcbin
+  labels:
+    app: grpcbin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grpcbin
+  template:
+    metadata:
+      labels:
+        app: grpcbin
+    spec:
+      containers:
+        - name: grpcbin
+          image: moul/grpcbin:latest
+          ports:
+            - name: grpc
+              containerPort: 9000
+            - name: grpc-tls
+              containerPort: 9001
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpcbin
+  labels:
+    app: grpcbin
+spec:
+  type: NodePort
+  selector:
+    app: grpcbin
+  ports:
+    - name: grpc
+      port: 9000
+      targetPort: grpc
+      nodePort: 30000
+    - name: grpc-tls
+      port: 9001
+      targetPort: grpc-tls
+      nodePort: 30001

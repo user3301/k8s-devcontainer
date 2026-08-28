@@ -1,0 +1,16 @@
+# kubeconfig / cluster credentials — never commit these
+.kube/
+kubeconfig
+*.kubeconfig
+
+# helm
+charts/**/charts/
+*.tgz
+
+# go
+bin/
+vendor/
+
+# editor / OS
+.DS_Store
+*.swp

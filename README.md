@@ -109,6 +109,24 @@ range; see `manifests/grpcbin.yaml` for a working example.
   inotify limits are too low. On Linux/WSL raise them on the host:
   `sysctl -w fs.inotify.max_user_watches=524288 fs.inotify.max_user_instances=512`.
 
+## Why Docker-in-Docker?
+
+kind creates Kubernetes nodes *as Docker containers*, so something inside the
+devcontainer has to be a Docker daemon. The `docker-in-docker` feature provides
+one; `post-start.sh` waits for it before creating the cluster.
+
+The alternative is mounting the host's Docker socket
+("docker-outside-of-docker"). This repo deliberately does not, because the nodes
+would then be siblings on your *host* Docker: they outlive the devcontainer,
+`extraPortMappings` land on the host directly and collide with whatever already
+uses 80/443, and failed experiments leave orphaned node containers to clean up
+by hand. With Docker-in-Docker, deleting the devcontainer takes the cluster with
+it.
+
+The tradeoff is that a container *rebuild* also wipes the Docker-in-Docker
+storage — the cluster and any images you `make load`ed go with it. Restarts are
+unaffected.
+
 ## Layout
 
 ```

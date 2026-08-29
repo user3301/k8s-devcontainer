@@ -170,6 +170,51 @@ The tradeoff is that a container *rebuild* also wipes the Docker-in-Docker
 storage — the cluster and any images you `make load`ed go with it. Restarts are
 unaffected.
 
+## Starting from the CLI
+
+If you'd rather not use VS Code, the
+[devcontainers CLI](https://github.com/devcontainers/cli) builds and runs the
+same container from this repo's config:
+
+```bash
+npm install -g @devcontainers/cli
+
+devcontainer up --workspace-folder .          # build + start (first run: several min)
+devcontainer exec --workspace-folder . bash   # get a shell inside
+```
+
+Once inside, everything works as documented above:
+
+```bash
+make verify
+make status
+make deploy && make grpc-list
+```
+
+Useful variants:
+
+```bash
+# force a clean rebuild (also wipes the cluster - see the DinD note below)
+devcontainer up --workspace-folder . --remove-existing-container
+
+# run a one-off command without an interactive shell
+devcontainer exec --workspace-folder . kubectl get nodes
+
+# check the config parses without starting anything (still needs a running daemon)
+devcontainer read-configuration --workspace-folder .
+```
+
+The CLI needs a **running Docker daemon on the host** — every subcommand,
+including `read-configuration`, shells out to `docker` and fails with a bare
+exit 1 if the daemon is down. Start Docker Desktop first.
+
+Two differences from the VS Code flow: the CLI ignores everything under
+`customizations.vscode` (extensions and settings are a VS Code concern), and it
+does not forward `forwardPorts` for you. Port mappings still work, because
+`extraPortMappings` in `kind-cluster.yaml` publishes them on the devcontainer
+itself — but reaching them from the host may need an explicit
+`docker port` lookup or an `--publish` on the underlying container.
+
 ## Layout
 
 ```

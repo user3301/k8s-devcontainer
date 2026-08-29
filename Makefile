@@ -75,7 +75,7 @@ metrics: ## Install metrics-server (patched for kind's self-signed kubelet certs
 
 .PHONY: verify
 verify: ## Verify every required tool is on PATH
-	@for bin in kubectl helm kind grpcurl docker make; do \
+	@for bin in kubectl helm kind grpcurl kubectx kubens docker make; do \
 		if command -v $$bin >/dev/null 2>&1; then \
 			printf '  ok      %-9s %s\n' "$$bin" "$$(command -v $$bin)"; \
 		else \

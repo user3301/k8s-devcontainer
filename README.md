@@ -16,6 +16,8 @@ included — disappears when you delete the container.
 | `helm` | `kubectl-helm-minikube` devcontainer feature |
 | `kind` v0.33.0 | pinned download in `.devcontainer/install-tools.sh` |
 | `grpcurl` v1.9.3 | pinned download in `.devcontainer/install-tools.sh` |
+| `kubectx` / `kubens` v0.11.0 | pinned download in `.devcontainer/install-tools.sh` |
+| `fzf` | `apt` (powers kubectx/kubens interactive mode) |
 | GNU `make` | `build-essential` via apt |
 | `docker` | `docker-in-docker` devcontainer feature |
 | `go` | `go` devcontainer feature (handy for controllers/operators) |
@@ -57,6 +59,21 @@ make metrics                    # install metrics-server
 
 Run `make` with no arguments for the full list.
 
+### Switching context and namespace
+
+`kubectx` and `kubens` are installed, along with `fzf` so both work
+interactively:
+
+```bash
+kubectx                  # list contexts (no args = fzf picker)
+kubectx kind-playground  # switch context
+kubectx -                # switch back to the previous context
+kubens                   # list namespaces (no args = fzf picker)
+kubens kube-system       # switch the active namespace
+```
+
+The zsh setup adds `k`, `kctx` and `kns` aliases plus completions.
+
 ### Using your own images
 
 kind nodes have their own image store and cannot see your local Docker images.
@@ -94,7 +111,31 @@ range; see `manifests/grpcbin.yaml` for a working example.
 | --- | --- | --- |
 | `KIND_CLUSTER_NAME` | `playground` | cluster name |
 | `AUTO_CREATE_CLUSTER` | `true` | set `false` to skip cluster creation on start |
-| `KIND_VERSION` / `GRPCURL_VERSION` | pinned | override before a rebuild |
+| `KIND_VERSION` / `GRPCURL_VERSION` / `KUBECTX_VERSION` | pinned | override before a rebuild |
+
+## Adding or updating tooling
+
+`install-tools.sh` runs from `onCreateCommand`, so it fires **once**, when the
+container is created. Editing it does nothing to a container that is already
+running. The script is idempotent, so just run it again:
+
+```bash
+bash .devcontainer/install-tools.sh   # from inside the devcontainer
+exec zsh                              # pick up new aliases/completions
+make verify
+```
+
+From the host, if you'd rather not open a shell first:
+
+```bash
+docker exec -u vscode -w /workspaces/k8s-devcontainer <container-id> \
+  bash .devcontainer/install-tools.sh
+```
+
+Prefer this over **Rebuild Container**. A rebuild resets the Docker-in-Docker
+storage, so it takes the kind cluster and any `make load`ed images with it.
+Only a rebuild picks up changes to `devcontainer.json` itself (features, ports,
+`containerEnv`), because those are fixed at creation time.
 
 ## Notes and gotchas
 
@@ -102,6 +143,8 @@ range; see `manifests/grpcbin.yaml` for a working example.
   8 GB RAM, or the control-plane will fail to become ready.
 - **The cluster survives container restarts** but not a container rebuild —
   a rebuild resets the Docker-in-Docker storage along with every node.
+- **Stale shells.** Terminals opened before a tooling change won't have the new
+  aliases or completions. Run `exec zsh`.
 - **`kubectl` context** is `kind-playground`. `make cluster` prints it.
 - **Slow first start.** Pulling the node image plus booting the control-plane
   takes a couple of minutes. Later starts reuse the existing cluster.

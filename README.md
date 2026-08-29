@@ -132,17 +132,20 @@ docker exec -u vscode -w /workspaces/k8s-devcontainer <container-id> \
   bash .devcontainer/install-tools.sh
 ```
 
-Prefer this over **Rebuild Container**. A rebuild resets the Docker-in-Docker
-storage, so it takes the kind cluster and any `make load`ed images with it.
-Only a rebuild picks up changes to `devcontainer.json` itself (features, ports,
+Prefer this over **Rebuild Container** simply because it is much faster. Only a
+rebuild picks up changes to `devcontainer.json` itself (features, ports,
 `containerEnv`), because those are fixed at creation time.
 
 ## Notes and gotchas
 
 - **Resources.** kind wants headroom. Give Docker Desktop at least 4 CPUs and
   8 GB RAM, or the control-plane will fail to become ready.
-- **The cluster survives container restarts** but not a container rebuild —
-  a rebuild resets the Docker-in-Docker storage along with every node.
+- **The cluster outlives both restarts and rebuilds.** The Docker-in-Docker
+  feature mounts `/var/lib/docker` as a named volume keyed by
+  `${devcontainerId}`, which the spec guarantees is stable across rebuilds, so
+  the nodes and any `make load`ed images survive. To really start clean, delete
+  the volume (`docker volume ls | grep dind-var-lib-docker`) or just run
+  `make recreate`, which is usually what you actually want.
 - **Stale shells.** Terminals opened before a tooling change won't have the new
   aliases or completions. Run `exec zsh`.
 - **`kubectl` context** is `kind-playground`. `make cluster` prints it.
@@ -166,9 +169,17 @@ uses 80/443, and failed experiments leave orphaned node containers to clean up
 by hand. With Docker-in-Docker, deleting the devcontainer takes the cluster with
 it.
 
-The tradeoff is that a container *rebuild* also wipes the Docker-in-Docker
-storage — the cluster and any images you `make load`ed go with it. Restarts are
-unaffected.
+A second benefit is insulation from host Docker settings. Docker Desktop's
+"Use containerd for pulling and storing images" is known to break
+`kind load docker-image`
+([kind#4236](https://github.com/kubernetes-sigs/kind/issues/4236)), but the
+inner daemon has its own `/var/lib/docker` and `/var/lib/containerd` volumes and
+default configuration, so `make load` here is unaffected by whatever the host is
+set to.
+
+Note that the cluster is *not* torn down by a rebuild — those volumes are keyed
+by `${devcontainerId}`, which is stable across rebuilds. See the notes above for
+how to genuinely start clean.
 
 ## Starting from the CLI
 
@@ -194,7 +205,7 @@ make deploy && make grpc-list
 Useful variants:
 
 ```bash
-# force a clean rebuild (also wipes the cluster - see the DinD note below)
+# recreate the container (the kind cluster survives - see the DinD note above)
 devcontainer up --workspace-folder . --remove-existing-container
 
 # run a one-off command without an interactive shell
@@ -207,6 +218,12 @@ devcontainer read-configuration --workspace-folder .
 The CLI needs a **running Docker daemon on the host** — every subcommand,
 including `read-configuration`, shells out to `docker` and fails with a bare
 exit 1 if the daemon is down. Start Docker Desktop first.
+
+On **Docker Desktop + WSL2**, also check that WSL integration is enabled for
+your distro (Settings → Resources → WSL integration). Without it, `docker` in
+WSL is a shim that reports `The command 'docker' could not be found in this
+WSL 2 distro` even though Docker Desktop is running perfectly well on the
+Windows side.
 
 Two differences from the VS Code flow: the CLI ignores everything under
 `customizations.vscode` (extensions and settings are a VS Code concern), and it

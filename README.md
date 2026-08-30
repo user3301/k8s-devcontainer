@@ -136,6 +136,18 @@ Prefer this over **Rebuild Container** simply because it is much faster. Only a
 rebuild picks up changes to `devcontainer.json` itself (features, ports,
 `containerEnv`), because those are fixed at creation time.
 
+### Feature versions
+
+`devcontainer.json` refers to features by floating major tag (`common-utils:2`,
+`docker-in-docker:4`, ...), so the actual version resolved at build time drifts.
+`.devcontainer/devcontainer-lock.json` pins each one to an exact version and
+SHA-256 digest, and **is checked in** — same reasoning as the pinned
+`KIND_VERSION` / `KUBECTX_VERSION` in `install-tools.sh`, and the same role
+`package-lock.json` plays for npm.
+
+To deliberately pick up newer features, delete the lockfile and rebuild, then
+commit the regenerated file alongside any `devcontainer.json` change.
+
 ## Notes and gotchas
 
 - **Resources.** kind wants headroom. Give Docker Desktop at least 4 CPUs and
@@ -237,6 +249,7 @@ itself — but reaching them from the host may need an explicit
 ```
 .devcontainer/
   devcontainer.json     container definition, features, port forwarding
+  devcontainer-lock.json  resolved feature versions + digests (committed)
   install-tools.sh      kind, grpcurl, make + shell completions (runs once)
   post-start.sh         waits for docker, ensures the cluster exists
 kind-cluster.yaml       cluster topology and port mappings
